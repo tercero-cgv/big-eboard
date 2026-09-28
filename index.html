@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Big eBoard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#FDF8EC; --panel:#FFFFFF; --ink:#17130F; --muted:#6B6558; --line:#17130F;
+  --yellow:#FFE44D; --lav:#E9E5FF; --chip:#FFF0C2; --chip-line:#E9C25A; --chip-ink:#A85A08;
+  --display:'Baloo 2','Trebuchet MS',system-ui,sans-serif;
+  --body:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:600 17px/1.4 var(--body);overflow:hidden;
+  padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0);
+  touch-action:manipulation}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:4px solid #6C5CE7;outline-offset:2px}
+.pizarra{height:100%;display:grid;grid-template-rows:auto 1fr;gap:10px;padding:10px 12px 12px}
+
+/* Barra superior */
+.arriba{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.tab{border:3px solid var(--line);border-radius:14px;background:var(--panel);padding:4px 14px;
+  font:800 18px var(--display);box-shadow:0 3px 0 var(--line)}
+.tab[aria-selected="true"]{background:var(--lav)}
+.meta{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;border:3px solid var(--chip-line);
+  border-radius:999px;background:var(--chip);color:var(--chip-ink);padding:2px 6px 2px 14px}
+.meta input{flex:1;min-width:0;border:0;background:transparent;color:var(--chip-ink);
+  font:800 clamp(16px,1.8vw,21px) var(--display);padding:4px 0}
+.meta input::placeholder{color:#C89A5B}
+.meta input:focus{outline:none}
+.meta:focus-within{outline:4px solid #6C5CE7;outline-offset:2px}
+.icono{border:3px solid var(--line);border-radius:12px;background:var(--panel);width:40px;height:40px;
+  display:grid;place-items:center;font-size:18px;box-shadow:0 3px 0 var(--line);padding:0}
+
+/* Zona principal */
+.centro{min-height:0;display:grid;grid-template-columns:1fr 168px;gap:12px}
+.hoja{position:relative;min-height:0;display:flex;flex-direction:column;background:var(--panel);
+  border:2px solid var(--line);border-radius:14px;overflow:hidden}
+.lienzo{flex:1;min-height:0;display:grid;place-items:center;background:#F2EFE6}
+canvas{display:block;max-width:100%;max-height:100%;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.pie{display:flex;align-items:center;gap:8px;padding:6px 8px;border-top:2px solid var(--line);background:var(--panel)}
+.pie .num{font:800 18px var(--display);min-width:80px;text-align:center}
+.pie .derecha{margin-left:auto;display:flex;gap:8px}
+.nav{border:3px solid var(--line);border-radius:12px;background:var(--yellow);font:800 20px var(--display);
+  padding:2px 16px;box-shadow:0 3px 0 var(--line)}
+.nav[disabled]{background:#EEE;color:#999;cursor:default}
+.chico{border:2px solid var(--line);border-radius:10px;background:var(--panel);padding:3px 10px;font:800 15px var(--display)}
+.vacia{text-align:center;padding:24px;max-width:460px}
+.vacia h2{font:800 32px/1.1 var(--display);margin:0 0 8px}
+.vacia p{color:var(--muted);margin:0 0 18px}
+.btn{border:3px solid var(--line);border-radius:16px;background:var(--yellow);padding:10px 20px;
+  font:800 20px var(--display);box-shadow:0 4px 0 var(--line)}
+.btn:active,.nav:active,.tab:active,.act:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line)}
+.aviso{color:#A3222E;font-weight:800;margin-top:12px}
+
+/* Lateral de actividades */
+.lateral{display:flex;flex-direction:column;gap:9px;min-height:0}
+.act{position:relative;text-align:left;border:3px solid var(--line);border-radius:14px;background:#F8FAFB;
+  padding:8px 8px 8px 16px;box-shadow:0 4px 0 var(--line);font:800 16px/1.15 var(--display)}
+.act::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--c);border-radius:10px 0 0 10px}
+.act .ico{display:block;font-size:22px;line-height:1;margin-bottom:3px}
+.act.boleto{background:var(--yellow);text-align:center;padding-left:8px}
+.act.boleto::before{display:none}
+.act[disabled]{opacity:.5;box-shadow:0 2px 0 var(--line);cursor:default}
+.act .pronto{display:block;font:700 12px var(--body);color:var(--muted)}
+
+/* Actividad abierta encima del PDF */
+.capa{position:fixed;inset:0;z-index:10;background:var(--bg);display:flex;flex-direction:column}
+.capa[hidden]{display:none}
+.capa .cerrar{position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);right:12px;z-index:2;
+  border:3px solid var(--line);border-radius:14px;background:var(--panel);padding:6px 14px;
+  font:800 17px var(--display);box-shadow:0 3px 0 var(--line)}
+.capa iframe{flex:1;border:0;width:100%}
+
+@media (max-width:760px){
+  body{overflow:auto}
+  .centro{grid-template-columns:1fr}
+  .hoja{min-height:60vh}
+  .lateral{flex-direction:row;flex-wrap:wrap}
+  .act{flex:1 1 140px}
+}
+</style>
+</head>
+<body>
+<div class="pizarra">
+  <div class="arriba">
+    <div role="tablist" aria-label="Materia" id="tabs" style="display:flex;gap:8px"></div>
+    <label class="meta"><span aria-hidden="true">🎯</span>
+      <input id="meta" placeholder="Escribe la meta: Puedo..." aria-label="Meta de la lección"></label>
+    <button class="icono" id="pantalla" aria-label="Pantalla completa" title="Pantalla completa">⛶</button>
+  </div>
+
+  <div class="centro">
+    <section class="hoja" aria-label="Presentación">
+      <div class="lienzo" id="lienzo"></div>
+      <div class="pie" id="pie" hidden>
+        <button class="nav" id="ant" aria-label="Diapositiva anterior">◀</button>
+        <span class="num" id="num" aria-live="polite"></span>
+        <button class="nav" id="sig" aria-label="Diapositiva siguiente">▶</button>
+        <div class="derecha"><button class="chico" id="cambiar">Cambiar PDF</button></div>
+      </div>
+    </section>
+    <nav class="lateral" id="lateral" aria-label="Actividades"></nav>
+  </div>
+</div>
+
+<div class="capa" id="capa" hidden>
+  <button class="cerrar" id="cerrar">✕ Volver a la presentación</button>
+</div>
+
+<input type="file" id="archivo" accept="application/pdf" hidden>
+
+<script>
+(function(){
+'use strict';
+
+var MATERIAS=[
+  {id:'adl',nombre:'ADL'},
+  {id:'mate',nombre:'Matemáticas'},
+  {id:'ciencias',nombre:'Ciencias'}
+];
+// url: archivo de la actividad en la misma carpeta. Sin url = próximamente.
+var ACTIVIDADES=[
+  {id:'clasifica',nombre:'Clasifica',ico:'🗂️',c:'#A78BFA',url:'clasifica.html'},
+  {id:'ordena',nombre:'Ordena',ico:'🔀',c:'#4FB3F6'},
+  {id:'pregunta',nombre:'Pregunta rápida',ico:'🎡',c:'#F0708A'},
+  {id:'ciertofalso',nombre:'¿Cierto o falso?',ico:'✅',c:'#F59A4A'},
+  {id:'numerica',nombre:'Respuesta numérica',ico:'🔢',c:'#5BCB8B'},
+  {id:'boleto',nombre:'Boleto de salida',ico:'🎟️',boleto:true}
+];
+
+var CLAVE='pizarra-estado-v1';
+var estado={materia:'adl',metas:{},paginas:{}};
+try{var g=JSON.parse(localStorage.getItem(CLAVE)||'null');if(g)estado=Object.assign(estado,g);}catch(e){}
+function guardarEstado(){try{localStorage.setItem(CLAVE,JSON.stringify(estado));}catch(e){}}
+
+var $=function(id){return document.getElementById(id);};
+var lienzo=$('lienzo'),pie=$('pie'),num=$('num');
+var pdf=null,pagina=1,tareaRender=null,cargaId=0;
+
+var pdfListo=typeof window.pdfjsLib!=='undefined';
+if(pdfListo)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ---------- Guardado de PDFs por materia (IndexedDB) ----------
+var dbPromesa=new Promise(function(ok){
+  try{
+    var r=indexedDB.open('pizarra',1);
+    r.onupgradeneeded=function(){r.result.createObjectStore('pdfs');};
+    r.onsuccess=function(){ok(r.result);};
+    r.onerror=function(){ok(null);};
+  }catch(e){ok(null);}
+});
+function dbHacer(modo,fn){
+  return dbPromesa.then(function(db){
+    if(!db)return null;
+    return new Promise(function(ok){
+      try{
+        var tx=db.transaction('pdfs',modo),req=fn(tx.objectStore('pdfs'));
+        req.onsuccess=function(){ok(req.result||null);};
+        req.onerror=function(){ok(null);};
+      }catch(e){ok(null);}
+    });
+  });
+}
+function leerPdf(m){return dbHacer('readonly',function(s){return s.get(m);});}
+function guardarPdf(m,blob){return dbHacer('readwrite',function(s){return s.put(blob,m);});}
+
+// ---------- Materias y meta ----------
+function pintarTabs(){
+  $('tabs').innerHTML=MATERIAS.map(function(m){
+    return '<button class="tab" role="tab" data-m="'+m.id+'" aria-selected="'+(m.id===estado.materia)+'">'+m.nombre+'</button>';
+  }).join('');
+  $('meta').value=estado.metas[estado.materia]||'';
+}
+$('tabs').addEventListener('click',function(e){
+  var b=e.target.closest('[data-m]');if(!b||b.dataset.m===estado.materia)return;
+  estado.materia=b.dataset.m;guardarEstado();pintarTabs();cargarMateria();
+});
+$('meta').addEventListener('input',function(){
+  estado.metas[estado.materia]=this.value;guardarEstado();
+});
+$('meta').addEventListener('keydown',function(e){if(e.key==='Enter')this.blur();});
+
+// ---------- Presentación ----------
+function vacia(aviso){
+  pdf=null;pie.hidden=true;
+  var nombre=MATERIAS.filter(function(m){return m.id===estado.materia;})[0].nombre;
+  lienzo.innerHTML='<div class="vacia"><h2>Sube tu presentación de '+nombre+'</h2>'+
+    '<p>Exporta tus diapositivas como PDF desde Canva, Google Slides o PowerPoint. Se queda guardada en esta computadora para la próxima clase.</p>'+
+    '<button class="btn" id="subir">Escoger PDF</button>'+
+    (aviso?'<p class="aviso" role="alert">'+aviso+'</p>':'')+'</div>';
+  $('subir').onclick=function(){$('archivo').click();};
+}
+
+function cargarMateria(){
+  var id=++cargaId,m=estado.materia;
+  if(!pdfListo){vacia('No se pudo cargar el lector de PDF. Revisa la conexión a internet y recarga la página.');return;}
+  lienzo.innerHTML='';
+  leerPdf(m).then(function(blob){
+    if(id!==cargaId)return;
+    if(!blob){vacia();return;}
+    abrir(blob,estado.paginas[m]||1,id);
+  });
+}
+
+function abrir(blob,pag,id){
+  blob.arrayBuffer().then(function(buf){
+    return pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+  }).then(function(doc){
+    if(id!==cargaId)return;
+    pdf=doc;pagina=Math.min(Math.max(1,pag),doc.numPages);
+    lienzo.innerHTML='<canvas id="hoja" aria-label="Diapositiva"></canvas>';
+    pie.hidden=false;pintar();
+  }).catch(function(){
+    if(id===cargaId)vacia('Ese archivo no se pudo abrir. Prueba exportarlo otra vez como PDF.');
+  });
+}
+
+function pintar(){
+  if(!pdf)return;
+  var canvas=$('hoja');if(!canvas)return;
+  num.textContent=pagina+' / '+pdf.numPages;
+  $('ant').disabled=pagina<=1;$('sig').disabled=pagina>=pdf.numPages;
+  estado.paginas[estado.materia]=pagina;guardarEstado();
+  if(tareaRender){tareaRender.cancel();tareaRender=null;}
+  pdf.getPage(pagina).then(function(p){
+    var base=p.getViewport({scale:1});
+    var ancho=lienzo.clientWidth-16,alto=lienzo.clientHeight-16;
+    var escala=Math.max(0.1,Math.min(ancho/base.width,alto/base.height));
+    var dpr=window.devicePixelRatio||1;
+    var vp=p.getViewport({scale:escala*dpr});
+    canvas.width=Math.floor(vp.width);canvas.height=Math.floor(vp.height);
+    canvas.style.width=Math.floor(vp.width/dpr)+'px';canvas.style.height=Math.floor(vp.height/dpr)+'px';
+    tareaRender=p.render({canvasContext:canvas.getContext('2d'),viewport:vp});
+    tareaRender.promise.catch(function(){});
+  });
+}
+
+function ir(d){
+  if(!pdf)return;
+  var n=pagina+d;if(n<1||n>pdf.numPages)return;
+  pagina=n;pintar();
+}
+$('ant').onclick=function(){ir(-1);};
+$('sig').onclick=function(){ir(1);};
+$('cambiar').onclick=function(){$('archivo').click();};
+
+$('archivo').addEventListener('change',function(){
+  var f=this.files&&this.files[0];this.value='';
+  if(!f)return;
+  if(f.type&&f.type!=='application/pdf'){vacia('Escoge un archivo PDF.');return;}
+  var m=estado.materia,id=++cargaId;
+  estado.paginas[m]=1;guardarEstado();
+  guardarPdf(m,f).then(function(){if(id===cargaId)abrir(f,1,id);});
+});
+
+var espera;
+window.addEventListener('resize',function(){clearTimeout(espera);espera=setTimeout(pintar,150);});
+
+// ---------- Actividades ----------
+$('lateral').innerHTML=ACTIVIDADES.map(function(a){
+  var lista=!!a.url;
+  return '<button class="act'+(a.boleto?' boleto':'')+'" style="--c:'+(a.c||'transparent')+'" data-a="'+a.id+'"'+(lista?'':' disabled')+'>'+
+    '<span class="ico" aria-hidden="true">'+a.ico+'</span>'+a.nombre+(lista?'':'<span class="pronto">Próximamente</span>')+'</button>';
+}).join('');
+
+$('lateral').addEventListener('click',function(e){
+  var b=e.target.closest('[data-a]');if(!b||b.disabled)return;
+  var a=ACTIVIDADES.filter(function(x){return x.id===b.dataset.a;})[0];
+  var fr=document.createElement('iframe');
+  fr.src=a.url;fr.title=a.nombre;
+  $('capa').appendChild(fr);$('capa').hidden=false;
+  fr.addEventListener('load',function(){try{fr.contentWindow.focus();}catch(err){}});
+});
+
+function cerrarActividad(){
+  var c=$('capa'),fr=c.querySelector('iframe');
+  if(fr)c.removeChild(fr);
+  c.hidden=true;
+}
+$('cerrar').onclick=cerrarActividad;
+
+// ---------- Teclado y pantalla completa ----------
+document.addEventListener('keydown',function(e){
+  if(e.target.tagName==='INPUT')return;
+  if(!$('capa').hidden){if(e.key==='Escape')cerrarActividad();return;}
+  if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();ir(1);}
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();ir(-1);}
+});
+
+$('pantalla').onclick=function(){
+  var d=document;
+  try{
+    if(d.fullscreenElement||d.webkitFullscreenElement){(d.exitFullscreen||d.webkitExitFullscreen).call(d);}
+    else{var el=d.documentElement;(el.requestFullscreen||el.webkitRequestFullscreen).call(el);}
+  }catch(err){}
+};
+document.addEventListener('fullscreenchange',function(){setTimeout(pintar,100);});
+
+pintarTabs();
+cargarMateria();
+})();
+</script>
+</body>
+</html>

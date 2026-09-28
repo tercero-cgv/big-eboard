@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clasifica: primitivas y derivadas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#FDF8EC; --panel:#FFFFFF; --ink:#17130F; --muted:#6B6558; --line:#17130F;
+  --yellow:#FFE44D; --lav:#E9E5FF; --lav-ink:#3C3489; --mint:#D3F3E0; --ok-ink:#12703C;
+  --bad:#FBDADD; --bad-ink:#A3222E; --chip:#FFF0C2; --chip-line:#E9C25A; --chip-ink:#A85A08;
+  --display:'Baloo 2','Trebuchet MS',system-ui,sans-serif;
+  --body:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:600 18px/1.4 var(--body);
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);touch-action:manipulation}
+button,textarea,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:4px solid #6C5CE7;outline-offset:3px}
+.app{max-width:1100px;margin:0 auto;padding:20px 20px 40px;min-height:100%;display:flex;flex-direction:column}
+.barra{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:18px}
+.meta{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border:3px solid var(--chip-line);
+  border-radius:999px;background:var(--chip);color:var(--chip-ink);font:800 clamp(16px,2vw,22px)/1.2 var(--display)}
+.progreso{margin-left:auto;font:800 clamp(16px,2vw,22px) var(--display);color:var(--muted)}
+.btn{border:3px solid var(--line);border-radius:18px;background:var(--panel);padding:10px 18px;
+  font:800 18px var(--display);box-shadow:0 4px 0 var(--line);transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.btn.si{background:var(--yellow)}
+.btn.chico{padding:6px 12px;font-size:16px;border-radius:14px}
+h1{font:800 clamp(34px,5vw,60px)/1.05 var(--display);margin:10px 0 6px}
+.sub{color:var(--muted);margin:0 0 26px;max-width:60ch}
+.niveles{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-bottom:24px}
+.nivel{text-align:left;border:3px solid var(--line);border-radius:24px;padding:20px 22px;box-shadow:0 6px 0 var(--line)}
+.nivel b{display:block;font:800 28px/1.1 var(--display);margin-bottom:6px}
+.nivel span{color:var(--muted)}
+.n1{background:var(--lav)} .n2{background:var(--mint)}
+.escena{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px}
+.tarjeta{position:relative;min-width:min(90%,560px);text-align:center;padding:28px 40px;background:var(--panel);
+  border:4px solid var(--line);border-radius:30px;box-shadow:0 10px 0 var(--line)}
+.palabra{font:800 clamp(56px,10vw,130px)/1 var(--display);letter-spacing:.5px;overflow-wrap:anywhere}
+.palabra mark{background:var(--yellow);color:inherit;border-radius:12px;padding:0 4px}
+.tarjeta.ok{background:var(--mint)} .tarjeta.mal{background:var(--bad)}
+.tarjeta.sacude{animation:sacude .4s}
+@keyframes sacude{20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+.pregunta{font:800 clamp(20px,2.6vw,30px) var(--display);color:var(--muted);margin:0}
+.opciones{display:grid;gap:18px;width:100%;max-width:900px}
+.opciones.dos{grid-template-columns:1fr 1fr}
+.opciones.tres{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.op{border:4px solid var(--line);border-radius:26px;padding:22px 14px;box-shadow:0 7px 0 var(--line);
+  font:800 clamp(28px,4vw,48px)/1.1 var(--display);transition:transform .08s,box-shadow .08s}
+.op:active{transform:translateY(4px);box-shadow:0 3px 0 var(--line)}
+.op small{display:block;font:700 16px var(--body);color:var(--muted);margin-top:6px}
+.op.p{background:var(--lav)} .op.d{background:var(--mint)} .op.o{background:var(--panel)}
+.op.correcta{outline:6px solid var(--ok-ink);outline-offset:4px}
+.op.elegida-mal{background:var(--bad)}
+.op[disabled]{cursor:default}
+.respuesta{min-height:2.8em;text-align:center;font:800 clamp(20px,2.6vw,30px)/1.3 var(--display);max-width:32ch;margin:0}
+.respuesta.ok{color:var(--ok-ink)} .respuesta.mal{color:var(--bad-ink)}
+.fin{text-align:center}
+.puntos{font:800 clamp(64px,12vw,150px)/1 var(--display)}
+.repaso{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:14px 0 26px}
+.repaso span{border:3px solid var(--line);border-radius:14px;padding:4px 14px;background:var(--panel);font:800 22px var(--display)}
+.acciones{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.panel{background:var(--panel);border:3px solid var(--line);border-radius:24px;padding:20px;box-shadow:0 6px 0 var(--line)}
+label{display:block;font:800 20px var(--display);margin:0 0 6px}
+.ayuda{color:var(--muted);font-size:16px;margin:0 0 10px}
+input[type=text],textarea{width:100%;border:3px solid var(--line);border-radius:14px;padding:10px 12px;background:#fff}
+textarea{min-height:320px;font-family:var(--body);line-height:1.5;resize:vertical}
+.error{color:var(--bad-ink);font-weight:800;margin:10px 0 0}
+.fila{display:flex;flex-wrap:wrap;gap:12px;margin-top:16px}
+@media (max-width:560px){.opciones.dos{grid-template-columns:1fr}.tarjeta{padding:22px 18px}}
+@media (prefers-reduced-motion:reduce){.tarjeta.sacude{animation:none}.btn,.op{transition:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+(function(){
+'use strict';
+
+var CLAVE='clasifica-primitivas-v1';
+var EJEMPLO=[
+  'isla','isleño = isla',
+  'mar','marinero = mar',
+  'selva','selvático = selva',
+  'pesca','pescador = pesca',
+  'bosque','boscoso = bosque',
+  'flor','florero = flor',
+  'pan','panadero = pan',
+  'huracán','huracanado = huracán',
+  'tierra','enterrar = tierra'
+].join('\n');
+var META_EJEMPLO='Puedo identificar palabras primitivas y derivadas';
+
+var app=document.getElementById('app');
+var datos={meta:META_EJEMPLO,texto:EJEMPLO};
+var juego=null;
+
+try{
+  var g=JSON.parse(localStorage.getItem(CLAVE)||'null');
+  if(g&&typeof g.texto==='string'){datos.texto=g.texto;datos.meta=g.meta||META_EJEMPLO;}
+}catch(e){}
+
+function guardar(){try{localStorage.setItem(CLAVE,JSON.stringify(datos));}catch(e){}}
+
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function mezclar(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function norm(s){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+
+// Líneas sin "=" son primitivas; "derivada = primitiva" son derivadas
+function leer(texto){
+  var items=[],errores=[];
+  texto.split('\n').forEach(function(l,n){
+    l=l.trim(); if(!l)return;
+    if(l.indexOf('=')>-1){
+      var p=l.split('=').map(function(s){return s.trim();});
+      if(p.length!==2||!p[0]||!p[1]){errores.push(n+1);return;}
+      items.push({palabra:p[0],tipo:'D',origen:p[1]});
+    }else items.push({palabra:l,tipo:'P'});
+  });
+  return {items:items,errores:errores};
+}
+
+// Resalta la parte que la derivada comparte con su primitiva
+function resaltar(palabra,origen){
+  var a=norm(palabra),b=norm(origen),k=0;
+  while(k<a.length&&k<b.length&&a[k]===b[k])k++;
+  // Si la primitiva entera coincide y termina en vocal, esa vocal no se resalta (selva → selv-ático)
+  if(k===b.length&&/[aeiou]/.test(b[k-1]))k--;
+  if(k<3)return esc(palabra);
+  return '<mark>'+esc(palabra.slice(0,k))+'</mark>'+esc(palabra.slice(k));
+}
+
+function barra(extra){
+  return '<div class="barra"><span class="meta">🎯 '+esc(datos.meta)+'</span>'+(extra||'')+'</div>';
+}
+
+function inicio(){
+  juego=null;
+  var r=leer(datos.texto);
+  var nP=r.items.filter(function(x){return x.tipo==='P';}).length;
+  var nD=r.items.length-nP;
+  app.innerHTML=barra()+
+    '<h1>Primitivas y derivadas</h1>'+
+    '<p class="sub">'+r.items.length+' palabras en la lista: '+nP+' primitivas y '+nD+' derivadas.</p>'+
+    '<div class="niveles">'+
+      '<button class="nivel n1" data-act="nivel" data-n="1"><b>Nivel 1: Clasifica</b><span>¿Es primitiva o derivada?</span></button>'+
+      '<button class="nivel n2" data-act="nivel" data-n="2"><b>Nivel 2: ¿De dónde viene?</b><span>Escoge la primitiva de cada derivada.</span></button>'+
+    '</div>'+
+    '<div class="acciones" style="justify-content:flex-start"><button class="btn" data-act="editar">Editar palabras y meta</button></div>';
+}
+
+function editar(){
+  app.innerHTML=barra()+
+    '<div class="panel">'+
+      '<label for="meta">Meta de la lección</label>'+
+      '<input type="text" id="meta" value="'+esc(datos.meta)+'">'+
+      '<div style="height:18px"></div>'+
+      '<label for="lista">Palabras</label>'+
+      '<p class="ayuda">Una por línea. Escribe la primitiva sola. Para una derivada, escribe la derivada, un signo = y su primitiva: <b>marinero = mar</b>. No pongas dos palabras de la misma familia como primitivas.</p>'+
+      '<textarea id="lista" spellcheck="false">'+esc(datos.texto)+'</textarea>'+
+      '<p class="error" id="error" role="alert"></p>'+
+      '<div class="fila"><button class="btn si" data-act="guardar">Guardar lista</button>'+
+      '<button class="btn" data-act="inicio">Cancelar</button>'+
+      '<button class="btn" data-act="ejemplo" style="margin-left:auto">Usar lista de ejemplo</button></div>'+
+    '</div>';
+}
+
+function empezar(nivel,soloEstas){
+  var r=leer(datos.texto),cola;
+  if(nivel===1)cola=r.items;
+  else cola=r.items.filter(function(x){return x.tipo==='D';});
+  if(soloEstas)cola=soloEstas;
+  if(!cola.length){
+    app.innerHTML=barra()+'<div class="escena"><p class="respuesta mal">'+(nivel===2?'Añade al menos una derivada con su primitiva para jugar este nivel.':'La lista está vacía. Añade palabras para empezar.')+'</p><button class="btn si" data-act="editar">Editar palabras</button></div>';
+    return;
+  }
+  var primitivas={};
+  r.items.forEach(function(x){primitivas[x.tipo==='P'?x.palabra:x.origen]=1;});
+  juego={nivel:nivel,cola:mezclar(cola),i:0,aciertos:0,fallos:[],resp:false,primitivas:Object.keys(primitivas)};
+  pregunta();
+}
+
+function pregunta(){
+  var it=juego.cola[juego.i],ops;
+  var prog='<span class="progreso">'+(juego.i+1)+' de '+juego.cola.length+'</span>';
+  if(juego.nivel===1){
+    ops='<div class="opciones dos">'+
+      '<button class="op p" data-act="resp" data-v="P">Primitiva<small>tecla 1</small></button>'+
+      '<button class="op d" data-act="resp" data-v="D">Derivada<small>tecla 2</small></button></div>';
+  }else{
+    var otras=mezclar(juego.primitivas.filter(function(p){return norm(p)!==norm(it.origen)&&norm(p)!==norm(it.palabra);})).slice(0,2);
+    juego.opciones=mezclar([it.origen].concat(otras));
+    ops='<div class="opciones tres">'+juego.opciones.map(function(o,k){
+      return '<button class="op o" data-act="resp" data-v="'+esc(o)+'">'+esc(o)+'<small>tecla '+(k+1)+'</small></button>';
+    }).join('')+'</div>';
+  }
+  app.innerHTML=barra(prog)+
+    '<div class="escena">'+
+      '<p class="pregunta">'+(juego.nivel===1?'¿Primitiva o derivada?':'¿De qué palabra viene?')+'</p>'+
+      '<div class="tarjeta" id="tarjeta"><div class="palabra" id="palabra">'+esc(it.palabra)+'</div></div>'+
+      ops+
+      '<p class="respuesta" id="resp" aria-live="polite"></p>'+
+      '<button class="btn si" data-act="sig" id="sig" hidden>Siguiente</button>'+
+    '</div>';
+  juego.resp=false;
+}
+
+function responder(v){
+  if(!juego||juego.resp)return;
+  juego.resp=true;
+  var it=juego.cola[juego.i];
+  var bien=juego.nivel===1?(v===it.tipo):(norm(v)===norm(it.origen));
+  var tarjeta=document.getElementById('tarjeta'),resp=document.getElementById('resp');
+  if(bien)juego.aciertos++;else juego.fallos.push(it);
+
+  var explica=it.tipo==='P'
+    ?'«'+esc(it.palabra)+'» es primitiva: no viene de otra palabra.'
+    :'«'+esc(it.palabra)+'» es derivada: viene de «'+esc(it.origen)+'».';
+  resp.innerHTML=(bien?'Sí. ':'No. ')+explica;
+  resp.className='respuesta '+(bien?'ok':'mal');
+  tarjeta.className='tarjeta '+(bien?'ok':'mal sacude');
+  if(it.tipo==='D')document.getElementById('palabra').innerHTML=resaltar(it.palabra,it.origen);
+
+  Array.prototype.forEach.call(app.querySelectorAll('.op'),function(b){
+    b.disabled=true;
+    var val=b.getAttribute('data-v');
+    var esCorrecta=juego.nivel===1?val===it.tipo:norm(val)===norm(it.origen);
+    if(esCorrecta)b.classList.add('correcta');
+    else if(val===v)b.classList.add('elegida-mal');
+  });
+  var sig=document.getElementById('sig');
+  sig.hidden=false;
+  sig.textContent=juego.i+1<juego.cola.length?'Siguiente':'Ver resultado';
+  sig.focus();
+}
+
+function siguiente(){
+  if(!juego||!juego.resp)return;
+  juego.i++;
+  if(juego.i<juego.cola.length)pregunta();else fin();
+}
+
+function fin(){
+  var total=juego.cola.length,f=juego.fallos;
+  app.innerHTML=barra()+
+    '<div class="escena fin">'+
+      '<div class="puntos">'+juego.aciertos+' / '+total+'</div>'+
+      '<p class="pregunta">'+(f.length?'Para repasar':'Todas correctas')+'</p>'+
+      (f.length?'<div class="repaso">'+f.map(function(x){return '<span>'+esc(x.palabra)+'</span>';}).join('')+'</div>':'<div style="height:10px"></div>')+
+      '<div class="acciones">'+
+        (f.length?'<button class="btn si" data-act="repasar">Repetir las falladas</button>':'')+
+        '<button class="btn" data-act="nivel" data-n="'+juego.nivel+'">Jugar otra vez</button>'+
+        '<button class="btn" data-act="inicio">Inicio</button>'+
+      '</div>'+
+    '</div>';
+}
+
+app.addEventListener('click',function(e){
+  var b=e.target.closest('[data-act]'); if(!b)return;
+  var a=b.getAttribute('data-act');
+  if(a==='nivel')empezar(Number(b.getAttribute('data-n')));
+  else if(a==='resp')responder(b.getAttribute('data-v'));
+  else if(a==='sig')siguiente();
+  else if(a==='inicio')inicio();
+  else if(a==='editar')editar();
+  else if(a==='repasar')empezar(juego.nivel,juego.fallos.slice());
+  else if(a==='ejemplo'){document.getElementById('lista').value=EJEMPLO;document.getElementById('meta').value=META_EJEMPLO;}
+  else if(a==='guardar'){
+    var texto=document.getElementById('lista').value,meta=document.getElementById('meta').value.trim();
+    var r=leer(texto),err=document.getElementById('error');
+    if(!meta){err.textContent='Escribe la meta de la lección.';return;}
+    if(!r.items.length){err.textContent='Añade al menos una palabra.';return;}
+    if(r.errores.length){err.textContent='Revisa la línea '+r.errores.join(', ')+': escribe derivada = primitiva.';return;}
+    datos.texto=texto;datos.meta=meta;guardar();inicio();
+  }
+});
+
+app.addEventListener('input',function(e){
+  if(e.target.id==='lista'||e.target.id==='meta'){var err=document.getElementById('error');if(err)err.textContent='';}
+});
+
+document.addEventListener('keydown',function(e){
+  if(!juego||e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')return;
+  if(!juego.resp){
+    if(juego.nivel===1){
+      if(e.key==='1')responder('P');
+      else if(e.key==='2')responder('D');
+    }else if(juego.opciones){
+      var k=Number(e.key)-1;
+      if(k>=0&&k<juego.opciones.length)responder(juego.opciones[k]);
+    }
+  }else if(e.key==='Enter'||e.key===' '||e.key==='ArrowRight'){
+    e.preventDefault();siguiente();
+  }
+});
+
+inicio();
+})();
+</script>
+</body>
+</html>

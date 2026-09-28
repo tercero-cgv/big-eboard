@@ -73,6 +73,27 @@ canvas{display:block;max-width:100%;max-height:100%;background:#fff;box-shadow:0
 .act[disabled]{opacity:.5;box-shadow:0 2px 0 var(--line);cursor:default}
 .act .pronto{display:block;font:700 12px var(--body);color:var(--muted)}
 
+/* Temporizador flotante sobre el PDF */
+.icono[aria-pressed="true"]{background:var(--yellow)}
+.reloj{position:absolute;top:10px;right:10px;z-index:3;background:var(--panel);border:3px solid var(--line);
+  border-radius:18px;box-shadow:0 5px 0 var(--line);padding:8px 10px 10px;min-width:210px;text-align:center}
+.reloj[hidden]{display:none}
+.reloj .cifra{display:block;width:100%;border:0;background:transparent;padding:0;
+  font:800 56px/1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:1px}
+.reloj.poco .cifra{color:#C2410C}
+.reloj.fin{background:#FBDADD;animation:pulso .6s ease-in-out 4}
+.reloj.fin .cifra{color:#A3222E}
+@keyframes pulso{50%{transform:scale(1.06)}}
+.reloj .fila{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin-top:8px}
+.reloj .pre{border:2px solid var(--line);border-radius:10px;background:var(--panel);padding:2px 8px;font:800 15px var(--display)}
+.reloj .pre[aria-pressed="true"]{background:var(--lav)}
+.reloj .ctl{border:2px solid var(--line);border-radius:10px;background:var(--panel);padding:3px 10px;font:800 15px var(--display);box-shadow:0 2px 0 var(--line)}
+.reloj .ctl.si{background:var(--yellow)}
+.reloj.mini{min-width:0;padding:4px 10px}
+.reloj.mini .cifra{font-size:34px}
+.reloj.mini .fila{display:none}
+@media (prefers-reduced-motion:reduce){.reloj.fin{animation:none}}
+
 /* Actividad abierta encima del PDF */
 .capa{position:fixed;inset:0;z-index:10;background:var(--bg);display:flex;flex-direction:column}
 .capa[hidden]{display:none}
@@ -96,11 +117,29 @@ canvas{display:block;max-width:100%;max-height:100%;background:#fff;box-shadow:0
     <div role="tablist" aria-label="Materia" id="tabs" style="display:flex;gap:8px"></div>
     <label class="meta"><span aria-hidden="true">🎯</span>
       <input id="meta" placeholder="Escribe la meta: Puedo..." aria-label="Meta de la lección"></label>
+    <button class="icono" id="tiempo" aria-label="Temporizador" aria-pressed="false" title="Temporizador">⏱️</button>
     <button class="icono" id="pantalla" aria-label="Pantalla completa" title="Pantalla completa">⛶</button>
   </div>
 
   <div class="centro">
     <section class="hoja" aria-label="Presentación">
+      <div class="reloj" id="reloj" hidden role="timer">
+        <button class="cifra" id="cifra" title="Tocar para achicar o agrandar">05:00</button>
+        <div class="fila" id="presets">
+          <button class="pre" data-s="60">1</button>
+          <button class="pre" data-s="120">2</button>
+          <button class="pre" data-s="180">3</button>
+          <button class="pre" data-s="300" aria-pressed="true">5</button>
+          <button class="pre" data-s="600">10</button>
+          <button class="pre" data-s="900">15</button>
+        </div>
+        <div class="fila">
+          <button class="ctl" id="menos" aria-label="Quitar 30 segundos">−30s</button>
+          <button class="ctl si" id="iniciar">Iniciar</button>
+          <button class="ctl" id="mas" aria-label="Añadir 30 segundos">+30s</button>
+          <button class="ctl" id="reiniciar" aria-label="Reiniciar">↺</button>
+        </div>
+      </div>
       <div class="lienzo" id="lienzo"></div>
       <div class="pie" id="pie" hidden>
         <button class="nav" id="ant" aria-label="Diapositiva anterior">◀</button>
@@ -288,6 +327,79 @@ function cerrarActividad(){
   c.hidden=true;
 }
 $('cerrar').onclick=cerrarActividad;
+
+// ---------- Temporizador ----------
+var reloj=$('reloj'),cifra=$('cifra'),btnIniciar=$('iniciar');
+var total=300,restante=300,finEn=0,intervalo=null,audio=null;
+
+function formato(s){
+  s=Math.max(0,Math.ceil(s));
+  var m=Math.floor(s/60),r=s%60;
+  return (m<10?'0':'')+m+':'+(r<10?'0':'')+r;
+}
+function mostrar(){
+  cifra.textContent=formato(restante);
+  reloj.classList.toggle('poco',restante>0&&restante<=10);
+}
+function sonar(){
+  try{
+    if(!audio)return;
+    [0,0.35,0.7].forEach(function(t){
+      var o=audio.createOscillator(),g=audio.createGain();
+      o.type='sine';o.frequency.value=880;
+      g.gain.setValueAtTime(0.0001,audio.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.4,audio.currentTime+t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,audio.currentTime+t+0.28);
+      o.connect(g);g.connect(audio.destination);
+      o.start(audio.currentTime+t);o.stop(audio.currentTime+t+0.3);
+    });
+  }catch(e){}
+}
+function detener(){clearInterval(intervalo);intervalo=null;btnIniciar.textContent=restante>0?'Seguir':'Iniciar';}
+function tic(){
+  restante=(finEn-Date.now())/1000;
+  if(restante<=0){
+    restante=0;detener();btnIniciar.textContent='Iniciar';
+    mostrar();cifra.textContent='¡Tiempo!';
+    reloj.classList.remove('mini');reloj.classList.add('fin');sonar();
+    return;
+  }
+  mostrar();
+}
+function iniciar(){
+  // El sonido solo se puede activar después de un toque (regla de Safari y iPad)
+  try{if(!audio)audio=new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();}catch(e){}
+  if(intervalo){restante=(finEn-Date.now())/1000;detener();mostrar();return;}
+  if(restante<=0)restante=total;
+  reloj.classList.remove('fin');
+  finEn=Date.now()+restante*1000;
+  intervalo=setInterval(tic,250);
+  btnIniciar.textContent='Pausar';mostrar();
+}
+function fijar(s){
+  total=s;restante=s;
+  if(intervalo){finEn=Date.now()+s*1000;}
+  reloj.classList.remove('fin');
+  Array.prototype.forEach.call($('presets').children,function(b){b.setAttribute('aria-pressed',String(Number(b.dataset.s)===s));});
+  mostrar();
+}
+function ajustar(d){
+  if(intervalo){finEn=Math.max(Date.now()+1000,finEn+d*1000);restante=(finEn-Date.now())/1000;}
+  else{restante=Math.max(0,restante+d);if(restante>0)reloj.classList.remove('fin');}
+  mostrar();
+}
+
+$('tiempo').onclick=function(){
+  var abrir=reloj.hidden;
+  reloj.hidden=!abrir;this.setAttribute('aria-pressed',String(abrir));
+  if(!abrir){detener();restante=total;reloj.classList.remove('fin','mini');btnIniciar.textContent='Iniciar';mostrar();}
+};
+$('presets').addEventListener('click',function(e){var b=e.target.closest('[data-s]');if(b)fijar(Number(b.dataset.s));});
+btnIniciar.onclick=iniciar;
+$('mas').onclick=function(){ajustar(30);};
+$('menos').onclick=function(){ajustar(-30);};
+$('reiniciar').onclick=function(){detener();restante=total;reloj.classList.remove('fin');btnIniciar.textContent='Iniciar';mostrar();};
+cifra.onclick=function(){if(!reloj.classList.contains('fin'))reloj.classList.toggle('mini');else{reloj.classList.remove('fin');restante=total;mostrar();}};
 
 // ---------- Teclado y pantalla completa ----------
 document.addEventListener('keydown',function(e){

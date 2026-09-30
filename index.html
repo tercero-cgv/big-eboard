@@ -172,7 +172,8 @@ var MATERIAS=[
 var ACTIVIDADES=[
   {id:'clasifica',nombre:'Clasifica',ico:'🗂️',c:'#A78BFA',url:'clasifica.html'},
   {id:'ordena',nombre:'Ordena',ico:'🔀',c:'#4FB3F6'},
-  {id:'pregunta',nombre:'Pregunta rápida',ico:'🎡',c:'#F0708A'},
+  {id:'pregunta',nombre:'Pregunta rápida',ico:'💬',c:'#F0708A'},
+  {id:'ruleta',nombre:'Ruleta',ico:'🎡',c:'#E879C6',url:'ruleta.html'},
   {id:'ciertofalso',nombre:'¿Cierto o falso?',ico:'✅',c:'#F59A4A'},
   {id:'numerica',nombre:'Respuesta numérica',ico:'🔢',c:'#5BCB8B'},
   {id:'boleto',nombre:'Boleto de salida',ico:'🎟️',boleto:true}
@@ -317,7 +318,7 @@ $('lateral').addEventListener('click',function(e){
   var b=e.target.closest('[data-a]');if(!b||b.disabled)return;
   var a=ACTIVIDADES.filter(function(x){return x.id===b.dataset.a;})[0];
   var fr=document.createElement('iframe');
-  fr.src=a.url;fr.title=a.nombre;
+  fr.src=a.url+'?materia='+encodeURIComponent(estado.materia);fr.title=a.nombre;
   $('capa').appendChild(fr);$('capa').hidden=false;
   fr.addEventListener('load',function(){try{fr.contentWindow.focus();}catch(err){}});
 });
